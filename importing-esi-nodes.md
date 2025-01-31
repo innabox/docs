@@ -102,6 +102,12 @@ Once the nodes have registered with the infrastructure environment, you need to 
     openstack esi node network attach --network mynetwork mynode
     ```
 
+1. The nodes are configured to boot from the discovery CD. We need to configure the node to boot from disk:
+
+    ```
+    openstack baremetal node boot device set mynode disk --persistent
+    ```
+
 You will see that the discovered IP addresses for the node are updated to reflect the new network attachment.
 
 ## Update agent metadata
