@@ -137,7 +137,7 @@ The AI-in-a-Box platform requires robust observability that supports multi-tenan
 - Single-cluster observability (restricted visibility for a specific cluster owner/administrators)
 - Project-level end user observability (observability for project information within a specific namespace of a specific cluster)
 
-Observability targets multiple personas.   Use [cases and personas](https://docs.google.com/document/d/1Hyv6EYH7T4GVAVja6nabFrdMyZ3hfQePedsD3lcBqXU/edit?usp=sharing) will be specified in a separate document.  While ACM currently provides cluster-wide metrics, it does not offer fine-grained access control for metrics from different clusters or different projects (namespaces) within clusters.  Fine-grained access control is currently implemented in the MOC using AI Telemetry and the Prometheus Keycloak Proxy.
+Observability targets multiple personas.   Use cases and personas will be specified in a separate document.  While ACM currently provides cluster-wide metrics, it does not offer fine-grained access control for metrics from different clusters or different projects (namespaces) within clusters.  Fine-grained access control is currently implemented in the MOC using AI Telemetry and the Prometheus Keycloak Proxy.
 
 Decision:
 
