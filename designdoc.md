@@ -47,7 +47,7 @@ The team is also developing use cases and personas that we expect will be satisf
 This section begins with a brief overview of the architecture. It then discusses key design decisions that led to this architecture.
 
 ### High-Level Component Summary
-![innabox overview diagram.](https://research.redhat.com/wp-content/uploads/2025/03/innabox-overview-diagram-1.jpg)
+![innabox overview diagram](images/overview-diagram.jpg)
 The above diagram shows the components of our architecture. Two core sets of services at the bottom are: 1)  **Bare Metal Fulfillment (BM-F)**, which keeps track of hardware and is responsible for managing physical servers and network switches, and 2) **Cluster Fulfillment (C-F)**, which provisions and manages the OpenShift clusters using computers and networks from BM-F.  Both the BM-F and C-F have agents that expose the new APIs required for their services. In a large-scale environment there may be many instances of C-F and BM-F.  
 
 At the top, the **Web Interface** is an (example) UI for our service built on top of an API provided by the **Fulfillment Service**, a new component that directs requests to the appropriate BM-F or C-F agents. 
@@ -218,7 +218,7 @@ The MOC will, for the AI Hub, need to meet various compliance requirements inclu
 For both scalability and fault tolerance, we will support an architecture where a single Fulfillment Service API endpoint can interact with several Cluster Services and Bare Metal Services, where the scale of each is independent.  For example, in a data center with 100K nodes, a bare metal service may be appropriate to handle 10K servers, and a cluster service might only handle 5K nodes, so we would deploy in the data center 10 bare metal and 20 cluster services.  Cluster services will be able to create clusters on any of the bare metal services as well as clusters that span multiple bare metal services for fault tolerance.
 
 Most of the state will be in the bare metal and cluster services that are dependent on specific implementations today (ACM & ESI).  We have not yet investigated the failure model of each of these components.  A key part of this project that we have deferred for now is defining the fault characteristics of the overall solution, and how the overall solution will orchestrate overall recovery in the presence of component failure. 
-![Sacalbility.](https://research.redhat.com/wp-content/uploads/2025/03/Scalability-1.jpg)
+![scalability diagram](images/scalability.jpg)
 
 ### In PoCs focus purely on Physical Servers
 Despite extensive conversations, we will for the PoCs covered in this document focus only on physical hosts.   Longer term, we will want to integrate virtual hosts directly in two use cases:
