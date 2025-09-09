@@ -1,50 +1,6 @@
 ***Note: This is a working document and intended to evolve with input.***
 
 # AI-in-a-Box Design Document
-This document presents a high-level overview of an “AI-in-a-Box” solution we are developing to meet demand of large enterprises and sovereign clouds that want a readily deployed stack to quickly support complex multi-tenant AI use cases. We will be developing this solution and continuously deploying it at the Mass Open Cloud (MOC), allowing us to take advantage of the MOC’s scale and enabling us to ground the requirements using a production environment with a large community of AI users.  
-
-The primary use case we are focused on is a multi-tenant AI service where tenants can easily spin up their own environment for AI. Each tenant will have their own strongly isolated OpenShift cluster configured with the tools and services they select from a set of provided options. Tenants - and, wherever possible, end-users - will have access to the observability tools needed to debug their applications, automation/logging needed to meet their compliance requirements, fine grain metering, and cost management needed to make rational decisions around resource use. 
-
-The secondary use case is to enable sophisticated tenants to allocate isolated clusters of computers from the service, place those computers on networks, and manage/configure those computers themselves. This use case is needed for customers that need to support diverse uses of the hardware. For example, in the MOC we need to make hardware-on-demand available to Red Hat developers working on new capabilities of OpenShift, RHEL AI and even Linux. The MOC also requires this “bare metal” capability to enable institutional SLURM clusters to acquire and use some of the hardware.  While this requirement needs to be kept in mind for this design, it requires little new functionality over the primary use case. 
-
-By a solution, we mean that an offering:
-  1. includes a complete set of technologies and components, and
-  2. is prescriptive in only using validated components and technologies.[^1]
-[^1]:A validated component or technology is one that we have, potentially with a partner, integrated successfully into the solution and demonstrated successfully as part of the solution.
-While interfaces will be defined to enable new components to be supported over time, only with a prescriptive solution can we solve critical scalability, performance observability, security, and compliance requirements.[^2]  We provide a reference implementation that results in an end-to-end user experience that is necessarily based on choices of specific billing model, observability tools, switches, and GPUs.  We recognize that customer environments are highly variable, but believe that an open source reference implementation that illustrates a complete, integrated solution is valuable both: 1) as a starting point that providers of multi-tenant AI services can use to develop their own AI cloud offering, and 2) as a solution directly used by the MOC. 
-[^2]: See also a  [2021 proposal](https://governance.openstack.org/ideas/ideas/teapot/) from Zane Bitter of Red Hat
-Our goal is to rapidly evolve this solution and to provide open source tools to support the solution as needed. 
-
-## Additional information
-We have created the [“Innabox”](https://github.com/innabox) organization in Github as a public location to plan and develop this solution. It contains a [list of issues](https://github.com/innabox/issues/issues) driving our work as well as this documents and [additional documentation](https://github.com/innabox/docs). 
-
-## Document Overview
-There are three primary sections to this document:
-  1. [Requirements](#requirements): We describe the requirements of the complete solution that we will be incrementally developing. 
-  2. [Architecture](#architecture): We describe all  components of the solution, the limitations of existing components and the design decisions we have made to work around the limitations.
-  3. [Proof of Concepts](#proof-of-concepts): We will deliver the full solution through a series of proof of concept demonstrations (PoCs).   
-The team intends to make all software we develop in the PoCs available as open source. Anyone would be free to use, modify or try this solution, including potential customers.  In addition to sharing the software in open repositories, we intend to deploy each PoC in the MOC as a trial service, where it can be available for people with MOC accounts to use, and MOC operators to evaluate and evolve the solution with us, once they approve a PoC trial. The final PoC will form the basis of a complete solution implementation that others may adopt, improve on, or evolve our open source solution to satisfy their needs.
-
-## Requirements
-Not all of these requirements will be present in initial iterations of the solution. However, the solution should eventually support all of the following:
-- Create templated OpenShift clusters on bare metal with OpenShift AI on-demand.
-- Enable the use of hardware for purposes other than OpenShift clusters (e.g., SLURM clusters, testbeds).
-- Support strong multi-tenancy where different clusters are isolated at L2, and no tenant can compromise other tenants. 
-- Provide an inventory component with rich topology information that acts as a source of truth for all hardware and network resources. 
-- Provide tenants with the ability to automatically have the nodes selected for their cluster based on requirements around topology and hardware metadata.
-- Provide tenants with access to all the infrastructure information needed to debug complex distributed AI applications. 
-- Provide a simple user interface while still permitting advanced users to have granular control over their cluster configuration. 
-- Ensure that deployed clusters can meet various security and compliance requirements including HIPAA and GDPR. 
-- All solutions will have a specific implementation for all of the necessary components (see below).  
-- While initial components supported will be driven by the requirements of the MOC, the solution should support alternative implementations after some form of validation.  The solution must be feasible to deploy in the production MOC.
-- We will design the solution with clear interfaces between the components such that customers can replace individual components (e.g., switch management tooling) with something specific to their own environment.
-- Provide (as a configuration option) approximate cost information to be exposed to users to enable users to understand the implications of their choices. [^3]
-[^3]:While this is irrelevant for some, e.g., enterprise providers, exposing this information is critical for the MOC and a reference implementation that providers can adapt to their business model will hopefully be of broad value
-
-The team is also developing use cases and personas that we expect will be satisfied by this design.
-
-## Architecture
-This section begins with a brief overview of the architecture. It then discusses key design decisions that led to this architecture.
 
 ### High-Level Component Summary
 ![innabox overview diagram](images/overview-diagram.jpg)
