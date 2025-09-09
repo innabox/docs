@@ -196,7 +196,7 @@ This simple demo will create an initial graphical user interface, implement a tr
 - ACM will not automatically pull nodes from ESI. We will create a project to represent ACM and lease a number of nodes to this project, and then boot the nodes off an appropriate discovery ISO from the InfraEnv in order to register them with ACM.
 - We will not demonstrate dynamic network isolation. We will use ESI to pre-configure node networking as needed for cluster operation.
 - The operations we will demonstrate are limited to cluster creation and teardown.
-- In the user cluster, all per-cluster storage will be provided by the local hard drives on their systems in the cluster.  (If this storage is insufficient, standalone storage service may be needed.   See [https://github.com/innabox/issues/issues/10[(https://github.com/innabox/issues/issues/10)).
+- In the user cluster, all per-cluster storage will be provided by the local hard drives on their systems in the cluster.  (If this storage is insufficient, standalone storage service may be needed.   See [https://github.com/innabox/issues/issues/10](https://github.com/innabox/issues/issues/10)).
 
 This will be reviewed with the MOC operations team to collect feedback and requirements to be integrated into future PoCs. 
 
