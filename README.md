@@ -19,6 +19,10 @@ here means that the offering:
 1. includes a complete set of technologies and components
 2. is prescriptive in only using validated components and technologies
 
+A validated component or technology is one that we have, potentially with a
+partner, integrated successfully into the solution and demonstrated successfully
+as part of the deployed solution.
+
 An end-to-end prescriptive solution with specific technology choices (e.g.,
 GPUs, switches, observability tools, billing model) is needed to solve
 scalability, compliance and performance. While cloud provider environments are
