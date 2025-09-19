@@ -69,8 +69,8 @@ Management Clusters include the following software:
 The Fulfillment Service provides a single API that enables a CSP to access the
 wide range of capabilities needed to provision infrastructure on-demand. It does
 so by providing a gRPC- and/or REST-based API that allows end-users to create
-fulfillment requests. Upon receiving a request,it then conveys that request to a
-Management Cluster where that request can be fulfilled by a set of k8s
+fulfillment requests. Upon receiving a request, it then conveys that request to
+a Management Cluster where that request can be fulfilled by a set of k8s
 controllers.
 
 The design of the Fulfillment Service can be understood through three major
@@ -78,9 +78,48 @@ components: the core Fulfillment Service; the CloudKit Controller; and Ansible
 Automation Platform (AAP). The CloudKit Controller and AAP both run on a
 Management Cluster.
 
-**Fulfillment Service**: Receives and tracks requests for cloud resources, such as the clusters created by Bare Metal Fulfillment and Cluster Fulfillment. Each request is scheduled onto a management cluster. The fulfillment service includes an API that can be used through REST or gRPC. The Fulfillment CLI integrates with this API; service providers may also integrate their own UIs with this API.
-**Cloudkit Controller**: A Kubernetes operator running on each management cluster that watches for requests and then ensures they get fulfilled by using a combination of direct automation and delegation to Event Driven Ansible.
-**Ansible Automation Platform (AAP)**: Executes the majority of provisioning steps by running the associated Templates.
+### Fulfillment Service
+
+The Fulfillment Service receives and tracks requests for cloud resources. Each
+request is scheduled onto a Management Cluster. The Fulfillment Service includes
+an API that can be used through REST or gRPC.
+
+The Fulfillment Service exists as an API layer for several reasons:
+
+* Privilege Separation is achieved because the service that external entities interact with does not have the ability to directly affect infrastructure.
+* Multi-tenancy that is suitable for cloud use cases can only be achieved by adding a layer of privilege abstraction on top of the Kubernetes APIs that implement OSAC's capabilities.
+* While we could directly expose a k8s API with similar capabilities, the k8s API itself is generally understood to not be suitable for putting on the internet or in front of unknown and untrusted clients.
+* Additionally, Namespace-based RBAC in k8s is not sufficient for the level of tenant separation required.
+* Multiple Management Clusters may exist in a deployment as discussed above, and this layer enables topology awareness and the ability to schedule requests onto different Management Clusters as appropriate.
+
+The Fulfillment CLI integrates with this API; service providers may also
+integrate their own UIs with this API.
+
+### Cloudkit Controller
+
+Cloudkit Controller is a Kubernetes operator running on each Management Cluster
+that watches for requests and then ensures they get fulfilled by using a
+combination of direct automation and delegation to Event Driven Ansible.
+
+While the controller has APIs that may appear to duplicate other existing APIs
+in the OpenShift ecosystem, this controller offers a much narrower scope of
+capabilities, resulting in an API that is safe to expose to untrusted users.
+For example, when creating a cluster with this controller's API, the client can
+only specify a limited number of parameters about the cluster and how it gets
+deployed. If instead we offered direct access to existing cluster provisioning
+APIs, the client would have access to far more control over how infrastructure
+is configured and deployed, with the ability to deviate from what the CSP
+intends to deploy.
+
+### Ansible Automation Platform (AAP)
+
+AAP executes the majority of provisioning steps by running the associated
+Templates. [Event Driven Ansible
+(EDA)](https://github.com/ansible/event-driven-ansible) is used to launch
+Ansible in response to events, primarily by triggering EDA from the Cloudkit
+Controller.
+
+### Workflow
 
 The general workflow for fulfillment is as follows:
 
