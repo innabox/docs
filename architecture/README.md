@@ -58,7 +58,7 @@ necessary to provision and sustain the infrastructure requested by end users. A
 single Management Cluster may be treated as a failure domain or availability
 zone.
 
-Management clusters include the following software:
+Management Clusters include the following software:
 
 * [Red Hat Advanced Cluster Management](https://www.redhat.com/en/technologies/management/advanced-cluster-management): provision and manage clusters, especially using Hosted Control Planes.
 * [OpenShift Virtualization](https://www.redhat.com/en/technologies/cloud-computing/openshift/virtualization): provision and manage VMs.
@@ -76,7 +76,7 @@ controllers.
 The design of the Fulfillment Service can be understood through three major
 components: the core Fulfillment Service; the CloudKit Controller; and Ansible
 Automation Platform (AAP). The CloudKit Controller and AAP both run on a
-management cluster.
+Management Cluster.
 
 **Fulfillment Service**: Receives and tracks requests for cloud resources, such as the clusters created by Bare Metal Fulfillment and Cluster Fulfillment. Each request is scheduled onto a management cluster. The fulfillment service includes an API that can be used through REST or gRPC. The Fulfillment CLI integrates with this API; service providers may also integrate their own UIs with this API.
 **Cloudkit Controller**: A Kubernetes operator running on each management cluster that watches for requests and then ensures they get fulfilled by using a combination of direct automation and delegation to Event Driven Ansible.
@@ -85,7 +85,7 @@ management cluster.
 The general workflow for fulfillment is as follows:
 
 * First, the cloud provider makes a request for resources through the API, on behalf of a tenant user, having received that request through their own user interface. Alternatively the cloud provider might expose the fulfillment API directly to end users.
-* The fulfillment service selects a management cluster and then places the request there with the Kubernetes CloudKit operator using Kubernetes APIs.
+* The Fulfillment Service selects a Management Cluster and then places the request there with the Kubernetes CloudKit operator using Kubernetes APIs.
 * The CloudKit operator then performs automated setup and triggers the third component: Ansible playbooks via Event-Driven Ansible (EDA). It then reports status back to the Fulfillment Service.
 * Once the EDA webhook is triggered, AAP runs to manage the deployment. The exact automation varies and can be customized by each cloud provider’s needs.
 
