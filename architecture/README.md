@@ -1,8 +1,8 @@
 # Architecture
 
-The Open Sovereign AI Cloud solution gives cloud providers a complete platform
-to offer self-service provisioning of compute infrastructure, including VMs and
-OpenShift clusters, integrated with the cloud provider’s existing infrastructure
+The Open Sovereign AI Cloud (OSAC) solution gives cloud providers a complete platform
+to offer self-service provisioning of a range of services and infrastructure (e.g., VMs, Bare Metal, 
+OpenShift clusters, OpenShift AI, Model as a Service...) , integrated with the cloud provider’s existing infrastructure
 components. It features a fulfillment workflow that is powerful enough to handle
 complex cluster deployment while also being flexible enough to accommodate
 future expansion into other types of deployments.
@@ -13,13 +13,13 @@ Self-service provisioning in OSAC is built around a concept of Templates.
 Whether an end user wants to provision a VM, a cluster, or something else,
 they'll be presented with a selection of templates from which to choose. Upon
 selecting a template, they'll provide the required input, and then the system
-will proceed with a provisioning workflow.
+will proceed with a workflow to allocate the resources (e.g., computers, VMs, networks), connect those resources together, and install the required software on them.
 
-The CSP can define their own templates, including:
+The Cloud Service Provider (CSP) can define their own templates, including:
 
-* what input each template requires
-* what infrastructure it provisions
-* how it provisions that infrastructure
+* What input each template requires
+* What infrastructure it provisions
+* How it provisions that infrastructure
 
 Ansible makes that possible, because Ansible
 [Roles](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html)
@@ -31,11 +31,11 @@ the implementation of provisioning.
 Provisioning any kind of compute infrastructure can involve many different systems, such as:
 
 * DNS
-* network fabric
-* hardware inventory
-* hardware management
-* virtualization platform
-* application deployment
+* Network fabric
+* Hardware inventory
+* Hardware management
+* Virtualization platform
+* Application deployment
 
 Ansible's huge ecosystem of content can already interact with and automate the
 vast majority of systems that would be used by a cloud provider. By utilizing
@@ -56,15 +56,15 @@ zone.
 
 Management clusters include the following software:
 
-* **Red Hat Advanced Cluster Management**: provision and manage clusters, especially using Hosted Control Planes.
-* **OpenShift Virtualization**: provision and manage VMs.
-* **Ansible Automation Platform**: Event Driven Ansible (EDA) to execute provisioning and management workflows.
+* [Red Hat Advanced Cluster Management](https://www.redhat.com/en/technologies/management/advanced-cluster-management): provision and manage clusters, especially using Hosted Control Planes.
+* [OpenShift Virtualization](https://www.redhat.com/en/technologies/cloud-computing/openshift/virtualization): provision and manage VMs.
+* [Ansible Automation Platform](https://www.redhat.com/en/technologies/management/ansible): Event Driven Ansible (EDA) to execute provisioning and management workflows.
 
 ## Fulfillment
 
 The Fulfillment Service provides a single API that enables a CSP to access the
 wide range of capabilities needed to provision infrastructure on-demand. It does
-so by providing a gRPC-based API that allows end-users to create fulfillment
+so by providing a gRPC- and/or REST-based API that allows end-users to create fulfillment
 requests. Upon receiving a request,it then conveys that request to a Management
 Cluster where that request can be fulfilled by a set of k8s controllers.
 
@@ -73,21 +73,21 @@ components: the core Fulfillment Service; the CloudKit Controller; and Ansible
 Automation Platform (AAP). The CloudKit Controller and AAP both run on a
 management cluster.
 
-**Fulfillment Service**: Receives and tracks “orders” for cloud resources, such as the clusters created by Bare Metal Fulfillment and Cluster Fulfillment. Each order is placed onto a management cluster. The fulfillment service includes an API that can be used through REST or gRPC. The Fulfillment CLI integrates with this API; service providers may also integrate their own UIs with this API.
-**Cloudkit Controller**: A Kubernetes operator running on each management cluster that watches for orders and then ensures they get fulfilled by using a combination of direct automation and delegation to Event Driven Ansible.
+**Fulfillment Service**: Receives and tracks requests for cloud resources, such as the clusters created by Bare Metal Fulfillment and Cluster Fulfillment. Each request is scheduled onto a management cluster. The fulfillment service includes an API that can be used through REST or gRPC. The Fulfillment CLI integrates with this API; service providers may also integrate their own UIs with this API.
+**Cloudkit Controller**: A Kubernetes operator running on each management cluster that watches for requests and then ensures they get fulfilled by using a combination of direct automation and delegation to Event Driven Ansible.
 **Ansible Automation Platform (AAP)**: Executes the majority of provisioning steps by running the associated Templates.
 
 The general workflow for fulfillment is as follows:
 
 * First, the cloud provider makes a request for resources through the API, on behalf of a tenant user, having received that request through their own user interface. Alternatively the cloud provider might expose the fulfillment API directly to end users.
-* The fulfillment service selects a management cluster and then places the order there with the Kubernetes CloudKit operator using Kubernetes APIs.
+* The fulfillment service selects a management cluster and then places the request there with the Kubernetes CloudKit operator using Kubernetes APIs.
 * The CloudKit operator then performs automated setup and triggers the third component: Ansible playbooks via Event-Driven Ansible (EDA). It then reports status back to the Fulfillment Service.
 * Once the EDA webhook is triggered, AAP runs to manage the deployment. The exact automation varies and can be customized by each cloud provider’s needs.
 
 The Fulfillment Service is intentionally modeled on the Kubernetes pattern:
-providers submit an Order that declares the desired state, and the CloudKit
+providers submit a request that declares the desired state, and the CloudKit
 operator reconciles the cluster to match that desired state. To put it simply, the
-fulfillment API creates the order, and the Cloudkit Operator reconciles the
+fulfillment API creates the request, and the Cloudkit Operator reconciles the
 order. This gives the service a flexible way to achieve reconciliation that
 doesn’t limit us to a specific set of APIs or tools. Because this offers a wider
 application, further configuration to fit the needs of service providers is done
@@ -96,8 +96,8 @@ through Ansible Automation Platform (AAP).
 The flexibility of this architecture means that, broadly speaking, there are
 only two things that must happen when implementing a fulfillment workflow.
 
-1. Define an order object that has all the attributes a user needs to specify their desired outcome. For cluster fulfillment, that's simply a template and template parameters.
-2. Create the playbooks that reconcile the order. For cluster fulfillment, those playbooks call the OpenShift provisioning APIs, as well as the beginnings of bare metal/L2/L3 workflows.
+1. Define an request object that has all the attributes a user needs to specify their desired outcome. For cluster fulfillment, that's simply a template and template parameters.
+2. Create the playbooks that reconcile the request. For cluster fulfillment, those playbooks call the OpenShift provisioning APIs, as well as our initial implementation of bare metal/L2/L3 workflows.
 
 Details of specific fulfillment types are specified in the following sections.
 
