@@ -1,8 +1,9 @@
 # Architecture
 
-The Open Sovereign AI Cloud (OSAC) solution gives cloud providers a complete platform
-to offer self-service provisioning of a range of services and infrastructure (e.g., VMs, Bare Metal, 
-OpenShift clusters, OpenShift AI, Model as a Service...) , integrated with the cloud provider’s existing infrastructure
+The Open Sovereign AI Cloud (OSAC) solution gives cloud providers a complete
+platform to offer self-service provisioning of a range of services and
+infrastructure (e.g., VMs, Bare Metal, OpenShift clusters, OpenShift AI, Model
+as a Service...) , integrated with the cloud provider’s existing infrastructure
 components. It features a fulfillment workflow that is powerful enough to handle
 complex cluster deployment while also being flexible enough to accommodate
 future expansion into other types of deployments.
@@ -13,7 +14,9 @@ Self-service provisioning in OSAC is built around a concept of Templates.
 Whether an end user wants to provision a VM, a cluster, or something else,
 they'll be presented with a selection of templates from which to choose. Upon
 selecting a template, they'll provide the required input, and then the system
-will proceed with a workflow to allocate the resources (e.g., computers, VMs, networks), connect those resources together, and install the required software on them.
+will proceed with a workflow to allocate the resources (e.g., computers, VMs,
+networks), connect those resources together, and install the required software
+on them.
 
 The Cloud Service Provider (CSP) can define their own templates, including:
 
@@ -21,14 +24,15 @@ The Cloud Service Provider (CSP) can define their own templates, including:
 * What infrastructure it provisions
 * How it provisions that infrastructure
 
-Ansible makes that possible, because Ansible
-[Roles](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html)
-can be used as Templates. Metadata such as [argument
+A Template is an Ansible
+[Role](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html).
+Metadata such as [argument
 validation](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html#role-argument-validation)
 describes how to use a template, while the contents of the Role itself codify
 the implementation of provisioning.
 
-Provisioning any kind of compute infrastructure can involve many different systems, such as:
+Provisioning any kind of compute infrastructure can involve many different
+systems, such as:
 
 * DNS
 * Network fabric
@@ -39,7 +43,7 @@ Provisioning any kind of compute infrastructure can involve many different syste
 
 Ansible's huge ecosystem of content can already interact with and automate the
 vast majority of systems that would be used by a cloud provider. By utilizing
-ansible for defining the template and the details of how infrastructure gets
+Ansible for defining the template and the details of how infrastructure gets
 provisioned, each cloud provider gets the opportunity to customize templates to
 use their chosen infrastructure systems.
 
@@ -64,9 +68,10 @@ Management clusters include the following software:
 
 The Fulfillment Service provides a single API that enables a CSP to access the
 wide range of capabilities needed to provision infrastructure on-demand. It does
-so by providing a gRPC- and/or REST-based API that allows end-users to create fulfillment
-requests. Upon receiving a request,it then conveys that request to a Management
-Cluster where that request can be fulfilled by a set of k8s controllers.
+so by providing a gRPC- and/or REST-based API that allows end-users to create
+fulfillment requests. Upon receiving a request,it then conveys that request to a
+Management Cluster where that request can be fulfilled by a set of k8s
+controllers.
 
 The design of the Fulfillment Service can be understood through three major
 components: the core Fulfillment Service; the CloudKit Controller; and Ansible
