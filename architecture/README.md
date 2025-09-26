@@ -47,6 +47,11 @@ Ansible for defining the template and the details of how infrastructure gets
 provisioned, each cloud provider gets the opportunity to customize templates to
 use their chosen infrastructure systems.
 
+Additionally, each cloud provider can customize or create Templates that
+provision infrastructure according to the specifications of their cloud
+offering. For example, OpenShift clusters can have software pre-installed and
+pre-configured based on what a particular cloud provider wants to offer.
+
 ## Management Clusters
 
 A Management Cluster is an OpenShift cluster that includes a specific set of
@@ -111,6 +116,11 @@ APIs, the client would have access to far more control over how infrastructure
 is configured and deployed, with the ability to deviate from what the CSP
 intends to deploy.
 
+Following the k8s controller pattern enables the automation to not only
+provision resources, but to continuously ensure that those resource exist in the
+desired state. The controllers watch the state of resources and then initiate
+automation workflows as needed to maintain desired state.
+
 ### Ansible Automation Platform (AAP)
 
 AAP executes the majority of provisioning steps by running the associated
@@ -118,6 +128,13 @@ Templates. [Event Driven Ansible
 (EDA)](https://github.com/ansible/event-driven-ansible) is used to launch
 Ansible in response to events, primarily by triggering EDA from the Cloudkit
 Controller.
+
+Ansible roles and playbooks are expected to be idempotent, which is a good match
+for the declarative nature of the project's k8s controllers. The roles that
+constitute Templates may be run multiple times and should always converge to the
+same resulting state. That is a standard best practice for any Ansible
+automation content, and in this project it enables the controllers to safely run
+their automated workflows with Ansible as needed.
 
 ### Workflow
 
@@ -172,6 +189,49 @@ OSAC may also include a web UI that can be used for demos or proofs of concept.
 At some point it might make sense to include a production-ready web UI that could
 be used directly by CSPs, but that would require additional scope of use cases
 that go beyond the initial focus of OSAC.
+
+## Scalability
+
+The solution can scale horizontally in multiple ways:
+
+The Fulfillment API service can run as many instances as necessary behind a load
+balancer.
+
+Each Management Cluster can scale as needed to run the management tooling that
+constitutes the cloud's control plane.
+
+Each Management Cluster can scale to hundreds of nodes that can run hosted
+control planes. Based on typical performance and load characteristics for an
+OpenShift control plane, each additional node in the cluster should increase the
+cluster's capacity by at least several hosted control planes, if not ten or
+more.  See OpenShift's [sizing
+guidance](https://docs.redhat.com/en/documentation/openshift_container_platform/latest/html/hosted_control_planes/preparing-to-deploy-hosted-control-planes#hcp-sizing-calculation_hcp-sizing-guidance)
+for hosted control planes for more detail. Each individual hosted control plane
+can be attached to hundreds of worker nodes, whether they are bare metal or
+virtual.
+
+Likeise, each Management Cluster can scale as needed to host VMs.
+
+A deployment of the solution may include as many Management Clusters as needed
+in order to achieve sufficiant scale.
+
+## Lifecycle and Upgrade
+
+The solution may be safely upgraded and maintained without disrupting the VMs
+and clusters that have been deployed for end users. Infrastructure that has
+already been provisioned for an end user will not be disrupted even if the cloud
+solution itself suffers an outage.
+
+When offering clusters with hosted control planes, or when offering VMaaS, it is
+a best practice for each Management Cluster to have a separate dedicated cluster
+in which to run those hosted control planes and/or VMs. Doing so enables the
+Management Cluster itself to be safely upgraded and/or disrupted without
+disrupting the end-user infrastructure.
+
+Even the clusters that do host VMs and/or hosted control planes can be upgraded
+safely. Following standard k8s best practices enables pods to be automatically
+replaced on other nodes, and VMs to be live-migrated, as needed to upgrade each
+node in the cluster.
 
 ## Key Infrastructure Solutions
 
