@@ -32,24 +32,35 @@ modify to meet their needs.
 
 ![OSAC layers](images/OSAC-layers.jpg)
 
-As shown in Fig1, O-SAC currently supports a multi-tenant Bare Metal Cluster-aaS
-(dark blue) where tenants can easily spin up their own environment. Each tenant
+As shown in Fig1, O-SAC currently supports a multi-tenant Open Shift
+Cluster (OSC)-aaS (dark blue) where tenants can easily spin up their own environment. Each tenant
 has their own strongly isolated OpenShift cluster configured with the tools and
 services they select from a set of provided options. Tenants and end-users have
 access to the observability tools needed to debug their applications,
 automation/logging needed to meet their compliance requirements, fine grained
 monitoring, and cost management needed to make rational decisions about their
-resource use.
+resource use. 
 
-Bare Metal-aaS, under development, will allow tenants to allocate isolated
-groups of computers, place those computers on networks, and manage/configure
-those computers themselves. This service is needed, for example, by tenants that
-want to install their own cluster software (e.g., SLURM) and developers that
-are, for example, working on upstream k8s. 
+In our current release OSCaaS deployes  clusters on
+physical machines, with various physical and software configuration
+needed to optimize performace for the expected workloads. Relatively minor changes are needed to support
+deploying OpenShift clusters on virtual machines.  Also, as we will discuss,
+service provides can provided customized tempates for OSCaaS that
+include installation of OpenShift AI, other sofware, and even
+downloading of AI models to enable MaaS.  
+
+Virtual Data Center (VDC)-aaS, under development, will allow tenants to allocate isolated
+groups of virtual or physical computers, place those computers on networks, and manage/configure
+those computers themselves.  Physical machines are needed, for example, by tenants that
+want to install their own cluster software (e.g., SLURM).  Virtual
+machines can be used by developers that
+are, for example, working on upstream k8s, or enterprise customers
+that require complex network topoligies like VMware's VCloud
+Director. 
 
 Most of the development has so far focused on the lower layer services as a
 basis for a rich set of higher level services that are in plan. The one higher
-level service that is today under development, VM-aaS, will allow users to spin
+level service that is today under development, VMaaS, will allow users to spin
 up their own individual VMs. 
 
 O-SAC is being developed and continuously deployed at the [Mass Open
