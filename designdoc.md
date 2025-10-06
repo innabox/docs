@@ -70,9 +70,6 @@ We are still exploring the right mechanism to configure OpenShift clusters. In t
   - [Ansible Automation Platform](https://www.redhat.com/en/technologies/management/ansible) (AAP)
   - ACM [Policies](https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_management_for_kubernetes/2.12/html-single/governance/index)
 
-### Introduction of Fulfillment Service
-The Fulfillment Service provides a single API that enables a user to access the wide range of capabilities needed for BM-F and C-F. It does so by providing a simple API that allows users to create fulfillment requests, and then communicating the requests to the APIs exposed by the Bare Metal Service and the Cluster Service. The Fulfillment Service is independent of any specific instances of these Services.
-
 ### Networking requirements for clusters and bare metal
 In order to provide the strong isolation guarantees required by this solution, we need to be able to deploy OpenShift clusters on dedicated L2 networks. Additionally, in order for OpenShift to function, we need to provide a variety of other network infrastructure services:
 - Provide address assignment via DHCP to bare metal nodes, and provide a mechanism to control the selection of address ranges to avoid conflicts with other internal networks (and to ensure a proper address range for the planned size of the cluster)
