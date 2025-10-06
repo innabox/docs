@@ -79,8 +79,8 @@ a Management Cluster where that request can be fulfilled by a set of k8s
 controllers.
 
 The design of the Fulfillment Service can be understood through three major
-components: the core Fulfillment Service; the CloudKit Controller; and Ansible
-Automation Platform (AAP). The CloudKit Controller and AAP both run on a
+components: the core Fulfillment Service; the O-SAC Controller; and Ansible
+Automation Platform (AAP). The O-SAC Controller and AAP both run on a
 Management Cluster.
 
 ### Fulfillment Service
@@ -100,9 +100,9 @@ The Fulfillment Service exists as an API layer for several reasons:
 The Fulfillment CLI integrates with this API; service providers may also
 integrate their own UIs with this API.
 
-### Cloudkit Controller
+### O-SAC Controller
 
-Cloudkit Controller is a Kubernetes operator running on each Management Cluster
+O-SAC Controller is a Kubernetes operator running on each Management Cluster
 that watches for requests and then ensures they get fulfilled by using a
 combination of direct automation and delegation to Event Driven Ansible.
 
@@ -126,7 +126,7 @@ automation workflows as needed to maintain desired state.
 AAP executes the majority of provisioning steps by running the associated
 Templates. [Event Driven Ansible
 (EDA)](https://github.com/ansible/event-driven-ansible) is used to launch
-Ansible in response to events, primarily by triggering EDA from the Cloudkit
+Ansible in response to events, primarily by triggering EDA from the O-SAC
 Controller.
 
 Ansible roles and playbooks are expected to be idempotent, which is a good match
@@ -141,14 +141,14 @@ their automated workflows with Ansible as needed.
 The general workflow for fulfillment is as follows:
 
 * First, the cloud provider makes a request for resources through the API, on behalf of a tenant user, having received that request through their own user interface. Alternatively the cloud provider might expose the fulfillment API directly to end users.
-* The Fulfillment Service selects a Management Cluster and then places the request there with the Kubernetes CloudKit operator using Kubernetes APIs.
-* The CloudKit operator then performs automated setup and triggers the third component: Ansible playbooks via Event-Driven Ansible (EDA). It then reports status back to the Fulfillment Service.
+* The Fulfillment Service selects a Management Cluster and then places the request there with the Kubernetes O-SAC operator using Kubernetes APIs.
+* The O-SAC operator then performs automated setup and triggers the third component: Ansible playbooks via Event-Driven Ansible (EDA). It then reports status back to the Fulfillment Service.
 * Once the EDA webhook is triggered, AAP runs to manage the deployment. The exact automation varies and can be customized by each cloud provider’s needs.
 
 The Fulfillment Service is intentionally modeled on the Kubernetes pattern:
-providers submit a request that declares the desired state, and the CloudKit
+providers submit a request that declares the desired state, and the O-SAC
 operator reconciles the cluster to match that desired state. To put it simply, the
-fulfillment API creates the request, and the Cloudkit Operator reconciles the
+fulfillment API creates the request, and the O-SAC Operator reconciles the
 order. This gives the service a flexible way to achieve reconciliation that
 doesn’t limit us to a specific set of APIs or tools. Because this offers a wider
 application, further configuration to fit the needs of service providers is done
