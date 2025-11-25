@@ -11,7 +11,9 @@ Cluster fulfillment in OSAC leverages Red Hat Advanced Cluster Management
 (RHACM) to deploy OpenShift clusters using the Hosted Control Planes
 architecture. This approach allows control plane components to run as pods on a
 Management Cluster while worker nodes can run on bare metal servers or virtual
-machines.
+machines. By "hosting" control planes as pods on a management cluster, more
+control planes can run on a given set of hardware, achiving better density and
+resource utilization.
 
 The cluster fulfillment workflow follows the general pattern described in the
 [main architecture document](README.md#workflow), with specific implementations
