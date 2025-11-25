@@ -102,11 +102,12 @@ When a ClusterOrder is created or updated, the controller performs these steps:
 
 3. **EDA Webhook Trigger**: Calls the Event Driven Ansible webhook endpoint to initiate cluster provisioning:
    - The webhook payload includes the complete ClusterOrder specification.
+   - EDA runs a playbook that is responsible for creating or updating all relevant k8s resources, including the HostedCluster and NodePool. See below for details.
 
 4. **HostedCluster Monitoring**: After the webhook is triggered, the controller watches for a HostedCluster resource (created by the Ansible automation) and monitors its conditions:
    - Waits for the control plane to become available
    - Monitors that the cluster is not degraded
-   - Tracks node pool readiness
+   - Tracks NodePool size
 
 5. **Status Synchronization**: Continuously updates the ClusterOrder status based on the HostedCluster state, including:
    - Phase transitions (Progressing → Ready or Failed)
@@ -135,32 +136,21 @@ When triggered, EDA launches the appropriate workflow template in AAP.
 
 The main cluster creation workflow consists of these phases:
 
-1. **Retrieve Cluster Order Details**:
-   - Fetches the ClusterOrder object from Kubernetes
-   - Generates a unique lock holder ID to prevent concurrent modifications
-   - Applies default cluster settings via the `cloudkit.service.cluster_settings` role
-
-2. **Infrastructure Preparation**:
+1. **Infrastructure Preparation**:
    - Extracts template information from the ClusterOrder
    - Determines the working namespace
    - Acquires a cluster lock to ensure safe concurrent operations
    - Adds an infrastructure finalizer to the ClusterOrder to track cleanup
 
-3. **Template Execution**:
+2. **Template Execution**:
    - Dynamically includes the selected cluster template's `install` tasks
-   - Templates are Ansible roles located in `cloudkit-aap/collections/ansible_collections/cloudkit/templates/roles/`
+   - Templates are Ansible roles located at a file path specified in the `CLOUDKIT_TEMPLATE_COLLECTIONS` environment variable
    - Each template provides a standardized interface while allowing customization of the underlying implementation
 
-4. **Cluster Infrastructure Creation**:
-   - The `cloudkit.service.cluster_infra` role manages the hosted cluster lifecycle
+3. **Cluster Infrastructure Creation**:
    - Creates or updates a HostedCluster resource
    - Provisions worker nodes according to the node requests specification
    - Configures networking, ingress, and external access
-
-5. **Status Updates**:
-   - Updates the ClusterOrder status throughout the provisioning process
-   - Reports any errors or failures back to the controller
-   - Marks the cluster as ready once all components are operational
 
 ## Cluster Templates
 
@@ -168,8 +158,10 @@ Cluster templates are implemented as Ansible roles that define how clusters are
 provisioned. Each template:
 
 - Accepts standardized parameters (defined via role argument validation)
-- Implements an `install.yaml` tasks file that performs the provisioning
 - Can customize cluster configuration, pre-installed software, and infrastructure details
+- Implements an `install.yaml` tasks file that performs the provisioning
+- Implements a `postinstall.yaml` tasks file that performs tasks such as cluster configuration or software installation
+- Implements a `delete.yaml` tasks file that deletes resources associated with the cluster
 
 **Template Metadata**:
 
@@ -178,7 +170,6 @@ requirements:
 - `title`: Human-readable name
 - `description`: Explanation of what the template provides
 - `default_node_requirements`: Default worker node configuration
-- `allowed_resource_classes`: Which host classes are compatible with this template
 
 CSPs can create custom templates to offer differentiated cluster configurations, such as:
 - Clusters with specific software pre-installed (monitoring, security tools, etc.)
@@ -198,11 +189,7 @@ When worker nodes are provisioned on bare metal:
 3. Nodes are joined to the hosted control plane
 
 **Virtual Machine Workers**:
-When worker nodes are VMs on OpenShift Virtualization:
-1. VM resources are created on the Management Cluster
-2. The template defines VM specifications (CPU, memory, storage)
-3. VMs are automatically provisioned and configured
-4. Nodes join the hosted control plane
+This workflow is still being created.
 
 ## Infrastructure Components
 
@@ -216,8 +203,8 @@ The cluster provisioning workflow integrates with several infrastructure compone
   - Easier/faster upgrades and maintenance
 
 **Networking**:
-- Each cluster receives isolated network configurations
-- Ingress is configured using MetalLB or another load balancer solution (`cloudkit.service.metallb_ingress` role)
+- Each cluster is deployed on an isolated Layer 2 network
+- Ingress is configured on the tenant cluster worker nodes using MetalLB (`cloudkit.service.metallb_ingress` role)
 - External access is configured to expose the API and console endpoints
 - Worker nodes are connected to the appropriate networks based on template configuration
 
@@ -229,7 +216,8 @@ The cluster provisioning workflow integrates with several infrastructure compone
 **Identity and Access**:
 - Each cluster can be configured with an identity provider
 - RBAC configurations can be pre-applied by templates
-- Service accounts are created for cluster administration
+- A default "kubeadmin" user is available for the end user to configure their cluster
+- Default roles [are available](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/using-rbac#default-roles_using-rbac) to delegate cluster administration
 
 ## Status Tracking and Reporting
 
