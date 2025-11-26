@@ -211,9 +211,11 @@ The cluster provisioning workflow integrates with several infrastructure compone
 - Worker nodes are connected to the appropriate networks based on template configuration
 
 **Storage**:
-- Templates can specify storage classes for persistent volumes
-- Both local and remote storage backends are supported
-- CSPs can customize storage options per template
+- At time of writing, OSAC code and default templates have no direct integration with storage providers. But the intent is for CSPs to interact with a storage provider of their choice from their templates
+- Templates can be used to specify storage classes for persistent volumes
+- Both local (software-defined storage) and remote storage backends are possible
+- CSPs will be able to customize storage options per template
+- The project will offer a more structured approach to storage integration in the future
 
 **Identity and Access**:
 - Each cluster can be configured with an identity provider
