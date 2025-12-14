@@ -98,7 +98,7 @@ When a ClusterOrder is created or updated, the controller performs these steps:
 1. **Status Initialization**: Sets the phase to "Progressing" and initializes status conditions
 
 2. **Infrastructure Preparation**: Creates prerequisite Kubernetes objects:
-   - **Namespace**: A dedicated namespace for the cluster (typically named after the cluster ID)
+   - **Namespace**: A dedicated namespace for the cluster (named after the cluster ID)
    - **ServiceAccount**: Identity for cluster-related automation
    - **RoleBindings**: RBAC permissions for the service account to manage cluster resources
 
