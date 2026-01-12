@@ -88,6 +88,8 @@ GDPR: The General Data Protection Regulation (GDPR), is a European Union law
 focused on data protection and privacy for individuals within the EU. O-SAC will
 have to comply with these regulations.
 
+See [personas.md](personas.md) for a description of OSAC personas.
+
 ## Contribution Guide
 
 The "(AI [Factory]|Cloud) Inna Box" [organization on
