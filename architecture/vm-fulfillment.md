@@ -169,9 +169,9 @@ When a ComputeInstance is created or updated, the controller performs these step
 
 2. **Tenant Management**: Creates or verifies a Tenant resource exists:
    - The **Tenant** is a Kubernetes custom resource that represents the tenant
-   - When the Tenant controller processes a Tenant CR, it creates a dedicated Kubernetes **Namespace** for that tenant
+   - When the Tenant controller processes a Tenant CR, it creates a dedicated Kubernetes **Namespace** for that tenant, and a **UserDefinedNetwork** for that namespace
    - The name of the created namespace is recorded in the Tenant's `status.namespace` field
-   - All of the tenant's VMs and related resources are created in this tenant namespace
+   - All of the tenant's VMs and related resources are created in this tenant namespace, and belong to the same UserDefinedNetwork
    - The controller waits for Tenant to reach "Ready" state before proceeding with VM provisioning
 
 3. **Configuration Versioning**:
@@ -380,7 +380,7 @@ The VM provisioning workflow integrates with several infrastructure components:
 - CSPs can customize storage options per template
 
 **Tenant Isolation**:
-- Each tenant receives a dedicated namespace
+- Each tenant receives a dedicated namespace and UserDefinedNetwork
 - All VM resources are created in the tenant namespace
 - Kubernetes RBAC provides access control
 - Network policies can provide additional isolation
