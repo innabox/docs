@@ -1,0 +1,90 @@
+@startuml AAP Direct Model - Deletion During Provisioning
+skinparam scale 2
+skinparam padding 20
+skinparam ParticipantPadding 30
+skinparam BoxPadding 20
+
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 150
+
+actor User
+participant "fulfillment-cli" as CLI
+participant "fulfillment-service" as Service
+participant "Kubernetes API" as K8s
+participant "cloudkit-operator" as Operator
+participant "AAP REST API" as AAP
+
+note over User, AAP
+  **Prerequisites:** ComputeInstance created with
+  provisionJobID=4870, provisionJobState=Running
+end note
+
+== Deletion Initiated ==
+User -> CLI: delete computeinstance <uuid>
+CLI -> Service: DeleteComputeInstance(uuid)
+Service -> K8s: Set deletionTimestamp on CR
+K8s --> Service: Updated
+
+Operator -> K8s: Watch CR (updated event, deletionTimestamp set)
+Operator -> Operator: Enter deletion flow\nCheck provision job state
+
+== Cancel Running Provision Job ==
+Operator -> AAP: GET /api/controller/jobs/4870/
+AAP --> Operator: {id: 4870, status: running}
+
+Operator -> AAP: POST /api/controller/jobs/4870/cancel/
+AAP --> Operator: 202 Accepted
+note right: Cancellation is asynchronous
+
+loop Poll for Cancellation (every 30s)
+    Operator -> AAP: GET /api/controller/jobs/4870/
+    AAP --> Operator: {id: 4870, status: running}
+    Operator -> K8s: Requeue (wait for terminal state)
+end
+
+Operator -> AAP: GET /api/controller/jobs/4870/
+AAP --> Operator: {id: 4870, status: canceled}
+Operator -> Operator: Update status:\nprovisionJobState=Canceled
+Operator -> K8s: Update CR status
+note right: **Critical:** Status update\nuses retry.RetryOnConflict\nto prevent duplicates
+
+== Deprovision Phase ==
+Operator -> Operator: Check if deprovisionJobID empty
+Operator -> AAP: POST /api/controller/jobs/\n{template: deprovision, extra_vars}
+AAP --> Operator: 201 Created {id: 4872}
+Operator -> Operator: Set status:\ndeprovisionJobID=4872\ndeprovisionJobState=Pending
+Operator -> K8s: Update CR status
+note right: **Idempotency:** Job ID persisted\nimmediately to prevent\nduplicate triggers
+
+loop Poll Deprovision Status (every 30s)
+    Operator -> AAP: GET /api/controller/jobs/4872/
+    AAP --> Operator: {id: 4872, status: running}
+    Operator -> Operator: Update status:\ndeprovisionJobState=Running
+    Operator -> K8s: Update CR status
+end
+
+Operator -> AAP: GET /api/controller/jobs/4872/
+AAP --> Operator: {id: 4872, status: successful}
+Operator -> Operator: Update status:\ndeprovisionJobState=Succeeded
+
+== Cleanup ==
+Operator -> Operator: Remove operator finalizer
+Operator -> K8s: Remove finalizer from CR
+K8s -> K8s: Delete CR (no finalizers remain)
+
+note over Operator, K8s
+  **AAP Direct Guarantees:**
+  - Provision canceled before deprovision
+  - Single deprovision job (no duplicates)
+  - Status updates survive conflicts
+  - Deletion blocked until deprovision succeeds
+end note
+
+||||
+||||
+||||
+||||
+||||
+
+@enduml
