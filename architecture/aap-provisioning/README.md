@@ -217,14 +217,16 @@ Job information is persisted in the ComputeInstance status to enable crash recov
 
 **Status Fields:**
 
-The ComputeInstance status tracks both provision and deprovision jobs separately:
-- **provisionJob** - Tracks the current or most recent provision job
-- **deprovisionJob** - Tracks the current or most recent deprovision job
+The ComputeInstance status tracks job history using a `jobs` array that preserves both provision and deprovision operations:
+- **jobs** - Array of job statuses, ordered chronologically with latest operations at the end
+- Maximum history: Configurable via `CLOUDKIT_MAX_JOB_HISTORY` environment variable (default: 10 jobs)
 
-Each job status includes:
-- **id** - Job identifier (AAP job ID or "eda-webhook" for EDA provider)
-- **state** - Current job state (Pending, Running, Succeeded, Failed, etc.)
-- **message** - Human-readable status message
+Each job status entry includes:
+- **jobID** - Job identifier (AAP numeric job ID like "9076", or EDA job ID like "eda-webhook-1")
+- **type** - Job type: "provision" or "deprovision"
+- **timestamp** - When the job was created (RFC3339 format, UTC)
+- **state** - Current job state (Pending, Waiting, Running, Succeeded, Failed, Canceled, Unknown)
+- **message** - Human-readable status message (optional)
 - **blockDeletionOnFailure** - Whether to prevent CR deletion if job fails (AAP: true, EDA: false)
 
 **Persistence Strategy:**
@@ -556,14 +558,14 @@ spec:
   disk: 40
 EOF
 
-# Watch job status in CR
-kubectl get computeinstance test-ci-aap -o jsonpath='{.status.provisionJob}' | jq
+# Watch provision job status in CR
+kubectl get computeinstance test-ci-aap -o json | jq '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first'
 
 # Alternatively, use watch
-watch -n 5 'kubectl get computeinstance test-ci-aap -o jsonpath="{.status.provisionJob}" | jq'
+watch -n 5 'kubectl get computeinstance test-ci-aap -o json | jq ".status.jobs // [] | map(select(.type == \"provision\")) | sort_by(.timestamp) | reverse | first"'
 
 # Check AAP job directly
-AAP_JOB_ID=$(kubectl get computeinstance test-ci-aap -o jsonpath='{.status.provisionJob.id}')
+AAP_JOB_ID=$(kubectl get computeinstance test-ci-aap -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .jobID')
 curl -H "Authorization: Bearer $AAP_TOKEN" \
   "$AAP_URL/jobs/$AAP_JOB_ID/" | jq '.status, .failed, .finished'
 
@@ -638,12 +640,12 @@ Migrating from EDA to AAP Direct provides better feedback and error visibility.
    # Create test resource
    kubectl apply -f test-compute-instance.yaml
 
-   # Verify job ID in status
-   kubectl get computeinstance test-ci -o jsonpath='{.status.provisionJob.id}'
-   # Should show AAP job ID (e.g., "4870"), not "eda-webhook"
+   # Verify job ID in status (get latest provision job)
+   kubectl get computeinstance test-ci -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .jobID'
+   # Should show AAP job ID (e.g., "9076"), not "eda-webhook-1"
 
    # Watch job progress
-   kubectl get computeinstance test-ci -o jsonpath='{.status.provisionJob}' | jq
+   kubectl get computeinstance test-ci -o json | jq '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first'
    ```
 
 6. **Monitor Existing ComputeInstances:**
@@ -654,8 +656,8 @@ Migrating from EDA to AAP Direct provides better feedback and error visibility.
    # List ComputeInstances in non-Ready state
    kubectl get computeinstance -A --field-selector status.phase!=Ready
 
-   # Check their provision job status
-   kubectl get computeinstance <name> -o jsonpath='{.status.provisionJob}'
+   # Check their latest provision job status
+   kubectl get computeinstance <name> -o json | jq '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first'
    ```
 
 **Rollback:**
@@ -692,14 +694,17 @@ Both providers populate the `status` section of ComputeInstance CRs with job inf
 status:
   phase: Progressing | Ready | Failed | Deleting
 
-  provisionJob:
-    id: "4870"  # AAP job ID or "eda-webhook"
-    state: Running | Succeeded | Failed | Canceled | Unknown
-    message: "Job running"
+  jobs:
+  - jobID: "9076"  # AAP job ID (numeric) or EDA job ID ("eda-webhook-1")
+    type: provision
+    timestamp: "2026-02-12T09:55:26Z"
+    state: Succeeded
+    message: "Provision job succeeded"
     blockDeletionOnFailure: true  # AAP: true, EDA: false
 
-  deprovisionJob:
-    id: "4925"
+  - jobID: "9079"  # Subsequent AAP deprovision job
+    type: deprovision
+    timestamp: "2026-02-12T10:12:15Z"
     state: Running
     message: "Deprovision job triggered"
     blockDeletionOnFailure: true
@@ -711,17 +716,20 @@ status:
 **Querying Status:**
 
 ```bash
-# Get full status
-kubectl get computeinstance <name> -o yaml
+# Get full jobs array
+kubectl get computeinstance <name> -o json | jq '.status.jobs'
 
-# Get provision job status
-kubectl get computeinstance <name> -o jsonpath='{.status.provisionJob}' | jq
+# Get latest provision job
+kubectl get computeinstance <name> -o json | jq '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first'
 
-# Get job state only
-kubectl get computeinstance <name> -o jsonpath='{.status.provisionJob.state}'
+# Get provision job state only
+kubectl get computeinstance <name> -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .state'
 
-# Get deprovision job status
-kubectl get computeinstance <name> -o jsonpath='{.status.deprovisionJob}' | jq
+# Get latest deprovision job
+kubectl get computeinstance <name> -o json | jq '.status.jobs // [] | map(select(.type == "deprovision")) | sort_by(.timestamp) | reverse | first'
+
+# Get all jobs by type
+kubectl get computeinstance <name> -o json | jq '.status.jobs // [] | map(select(.type == "provision"))'
 ```
 
 #### Key Log Messages (AAP Direct)
@@ -800,13 +808,13 @@ spec:
 EOF
 
 # 2. Monitor provision job status
-watch -n 5 'kubectl get computeinstance test-ci-success -o jsonpath="{.status.provisionJob}" | jq'
+watch -n 5 'kubectl get computeinstance test-ci-success -o json | jq ".status.jobs // [] | map(select(.type == \"provision\")) | sort_by(.timestamp) | reverse | first"'
 
 # 3. Verify state transitions: Pending → Running → Succeeded
 # Expected states over time:
-#   {id: "4870", state: "Pending", message: "Job queued"}
-#   {id: "4870", state: "Running", message: "Job running"}
-#   {id: "4870", state: "Succeeded", message: "Job completed successfully"}
+#   {jobID: "9076", type: "provision", timestamp: "...", state: "Pending", message: "Job queued"}
+#   {jobID: "9076", type: "provision", timestamp: "...", state: "Running", message: "Job running"}
+#   {jobID: "9076", type: "provision", timestamp: "...", state: "Succeeded", message: "Job completed successfully"}
 
 # 4. Verify CR phase: Progressing → Ready
 kubectl get computeinstance test-ci-success -o jsonpath='{.status.phase}'
@@ -816,7 +824,7 @@ kubectl get computeinstance test-ci-success -o jsonpath='{.status.phase}'
 kubectl delete computeinstance test-ci-success
 
 # 6. Monitor deprovision job
-watch -n 5 'kubectl get computeinstance test-ci-success -o jsonpath="{.status.deprovisionJob}" | jq'
+watch -n 5 'kubectl get computeinstance test-ci-success -o json | jq ".status.jobs // [] | map(select(.type == \"deprovision\")) | sort_by(.timestamp) | reverse | first"'
 
 # 7. Verify deprovision state transitions: Pending → Running → Succeeded
 # Expected:
@@ -859,13 +867,13 @@ EOF
 kubectl delete computeinstance test-ci-cancel &
 
 # 3. Observe provision job cancellation
-kubectl get computeinstance test-ci-cancel -o jsonpath='{.status.provisionJob.state}'
+kubectl get computeinstance test-ci-cancel -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .state'
 # Expected progression:
 #   Running → Canceled
 
 # 4. Observe deprovision triggered after cancellation
-kubectl get computeinstance test-ci-cancel -o jsonpath='{.status.deprovisionJob.id}'
-# Expected: AAP job ID (e.g., "4926")
+kubectl get computeinstance test-ci-cancel -o json | jq -r '.status.jobs // [] | map(select(.type == "deprovision")) | sort_by(.timestamp) | reverse | first | .jobID'
+# Expected: AAP job ID (e.g., "9104")
 
 # 5. Check operator logs for cancellation
 kubectl logs -n cloudkit-system deployment/cloudkit-operator-controller-manager | grep "cancel"
@@ -906,10 +914,12 @@ spec:
 EOF
 
 # 2. Observe job failure
-kubectl get computeinstance test-ci-fail -o jsonpath='{.status.provisionJob}' | jq
+kubectl get computeinstance test-ci-fail -o json | jq '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first'
 # Expected:
 # {
-#   "id": "4871",
+#   "jobID": "9077",
+#   "type": "provision",
+#   "timestamp": "2026-02-12T10:00:00Z",
 #   "state": "Failed",
 #   "message": "AAP job failed: [error details from playbook]",
 #   "blockDeletionOnFailure": true
@@ -920,7 +930,7 @@ kubectl get computeinstance test-ci-fail -o jsonpath='{.status.phase}'
 # Expected: Failed
 
 # 4. Review error details in AAP UI or via API
-AAP_JOB_ID=$(kubectl get computeinstance test-ci-fail -o jsonpath='{.status.provisionJob.id}')
+AAP_JOB_ID=$(kubectl get computeinstance test-ci-fail -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .jobID')
 curl -H "Authorization: Bearer $AAP_TOKEN" \
   "$AAP_URL/jobs/$AAP_JOB_ID/" | jq '.result_traceback'
 
@@ -928,7 +938,7 @@ curl -H "Authorization: Bearer $AAP_TOKEN" \
 kubectl delete computeinstance test-ci-fail
 
 # 6. Verify deprovision is triggered (cleanup attempt)
-kubectl get computeinstance test-ci-fail -o jsonpath='{.status.deprovisionJob}' | jq
+kubectl get computeinstance test-ci-fail -o json | jq '.status.jobs // [] | map(select(.type == "deprovision")) | sort_by(.timestamp) | reverse | first'
 ```
 
 **Expected Behavior:**
@@ -964,11 +974,11 @@ spec:
 EOF
 
 # 3. Check job ID
-kubectl get computeinstance test-ci-eda -o jsonpath='{.status.provisionJob.id}'
-# Expected: "eda-webhook"
+kubectl get computeinstance test-ci-eda -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .jobID'
+# Expected: "eda-webhook-1"
 
 # 4. Check job state
-kubectl get computeinstance test-ci-eda -o jsonpath='{.status.provisionJob.state}'
+kubectl get computeinstance test-ci-eda -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .state'
 # Expected: "Unknown"
 
 # 5. Wait for AAP to update annotation
@@ -981,7 +991,7 @@ kubectl get computeinstance test-ci-eda -o jsonpath='{.status.phase}'
 ```
 
 **Expected Behavior:**
-- Job ID is "eda-webhook"
+- Job ID is "eda-webhook-1" (or eda-webhook-2 for subsequent jobs)
 - Job state is "Unknown"
 - CR becomes Ready when annotation is updated by AAP
 - Finalizer is managed by AAP playbook
@@ -1084,11 +1094,11 @@ Integration tests use fake Kubernetes clients and mock AAP clients to verify end
 # View full ComputeInstance status
 kubectl get computeinstance <name> -o yaml
 
-# Check provision job status
-kubectl get computeinstance <name> -o jsonpath='{.status.provisionJob}' | jq
+# Check latest provision job status
+kubectl get computeinstance <name> -o json | jq '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first'
 
-# Check deprovision job status
-kubectl get computeinstance <name> -o jsonpath='{.status.deprovisionJob}' | jq
+# Check latest deprovision job status
+kubectl get computeinstance <name> -o json | jq '.status.jobs // [] | map(select(.type == "deprovision")) | sort_by(.timestamp) | reverse | first'
 
 # Check CR phase
 kubectl get computeinstance <name> -o jsonpath='{.status.phase}'
@@ -1136,7 +1146,7 @@ curl -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/job_templates/" | jq '.resu
 curl -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/workflow_job_templates/" | jq '.results[] | {name, id}'
 
 # Query specific job
-AAP_JOB_ID=$(kubectl get computeinstance <name> -o jsonpath='{.status.provisionJob.id}')
+AAP_JOB_ID=$(kubectl get computeinstance <name> -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .jobID')
 curl -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/jobs/$AAP_JOB_ID/" | jq
 
 # Check job status only
@@ -1187,11 +1197,11 @@ exit
 **Diagnosis:**
 
 ```bash
-# Check provision job state
-kubectl get computeinstance <name> -o jsonpath='{.status.provisionJob}' | jq
+# Check latest provision job state
+kubectl get computeinstance <name> -o json | jq '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first'
 
 # If job ID exists, check AAP directly
-AAP_JOB_ID=$(kubectl get computeinstance <name> -o jsonpath='{.status.provisionJob.id}')
+AAP_JOB_ID=$(kubectl get computeinstance <name> -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .jobID')
 curl -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/jobs/$AAP_JOB_ID/" | jq '.status'
 ```
 
@@ -1205,7 +1215,7 @@ curl -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/jobs/$AAP_JOB_ID/" | jq '.s
 
 # If AAP job failed:
 # 1. Check error details in AAP
-AAP_JOB_ID=$(kubectl get computeinstance <name> -o jsonpath='{.status.provisionJob.id}')
+AAP_JOB_ID=$(kubectl get computeinstance <name> -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .jobID')
 curl -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/jobs/$AAP_JOB_ID/" | jq '.result_traceback'
 
 # 2. Fix underlying issue (quota, network, etc.)
@@ -1226,11 +1236,11 @@ kubectl delete computeinstance <name>
 **Diagnosis:**
 
 ```bash
-# Check deprovision job status
-kubectl get computeinstance <name> -o jsonpath='{.status.deprovisionJob}' | jq
+# Check latest deprovision job status
+kubectl get computeinstance <name> -o json | jq '.status.jobs // [] | map(select(.type == "deprovision")) | sort_by(.timestamp) | reverse | first'
 
 # Check AAP job for error details
-AAP_JOB_ID=$(kubectl get computeinstance <name> -o jsonpath='{.status.deprovisionJob.id}')
+AAP_JOB_ID=$(kubectl get computeinstance <name> -o json | jq -r '.status.jobs // [] | map(select(.type == "deprovision")) | sort_by(.timestamp) | reverse | first | .jobID')
 curl -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/jobs/$AAP_JOB_ID/" | jq '.result_traceback'
 ```
 
@@ -1267,8 +1277,8 @@ kubectl get computeinstance <name>
 **Diagnosis:**
 
 ```bash
-# Check CR status history
-kubectl get computeinstance <name> -o yaml | grep -A 10 provisionJob
+# Check CR jobs array history
+kubectl get computeinstance <name> -o json | jq '.status.jobs'
 
 # List AAP jobs for this resource
 curl -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/jobs/?name__contains=<name>" | jq '.results[] | {id, status, created}'
@@ -1289,9 +1299,9 @@ for job_id in <duplicate-job-ids>; do
   curl -X POST -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/jobs/$job_id/cancel/"
 done
 
-# 3. Update CR status with correct job ID
+# 3. Update CR status with correct job ID (if needed)
 kubectl edit computeinstance <name>
-# Manually update status.provisionJob.id to correct value
+# Manually update status.jobs array to remove duplicate job entries or correct jobID values
 ```
 
 **Prevention:**
@@ -1309,8 +1319,8 @@ kubectl edit computeinstance <name>
 **Diagnosis:**
 
 ```bash
-# Check job ID in CR status
-AAP_JOB_ID=$(kubectl get computeinstance <name> -o jsonpath='{.status.provisionJob.id}')
+# Check latest provision job ID in CR status
+AAP_JOB_ID=$(kubectl get computeinstance <name> -o json | jq -r '.status.jobs // [] | map(select(.type == "provision")) | sort_by(.timestamp) | reverse | first | .jobID')
 
 # Check job status in AAP
 curl -H "Authorization: Bearer $AAP_TOKEN" "$AAP_URL/jobs/$AAP_JOB_ID/" | jq '.status'
@@ -1406,28 +1416,33 @@ EDA Provider sets `BlockDeletionOnFailure=false` because:
 - AAP playbook manages finalizer removal
 - Blocking would prevent CR deletion even on success (no status feedback)
 
-### 8.4 Why Separate ProvisionJob and DeprovisionJob Status?
+### 8.4 Why Jobs Array Instead of Separate Fields?
 
-The CR status tracks provision and deprovision jobs separately instead of a single "currentJob" field.
+The CR status uses a `jobs` array instead of separate `provisionJob` and `deprovisionJob` fields.
 
 **Benefits:**
 
-1. **Crash Recovery:** Both statuses persist in CR, controller can resume after restart
-2. **Historical Context:** Can see provision job details even during deprovision
-3. **Different Policies:** AAP blocks on deprovision failure, EDA doesn't
-4. **State Clarity:** Explicit lifecycle phases (provisioning vs deprovisioning)
-5. **Debugging:** Full job history visible in CR status for troubleshooting
+1. **Complete History:** Preserves full lifecycle audit trail (multiple provisions/deprovisions)
+2. **Crash Recovery:** All job statuses persist in CR, controller can resume from any state
+3. **Type Discrimination:** Jobs are filtered by `type` field ("provision" or "deprovision")
+4. **Chronological Ordering:** Timestamp-based sorting ensures correct job selection
+5. **Extensibility:** Easy to add new job types (e.g., "restart", "upgrade") in the future
+6. **Kubernetes Pattern:** Follows standard K8s pattern (similar to Pod conditions, Events)
+7. **Provider Agnostic:** Works seamlessly with mixed provider lifecycles (EDA provision + AAP deprovision)
 
 **Example:**
 
 ```yaml
 status:
-  provisionJob:
-    id: "4870"
+  jobs:
+  - jobID: "9076"
+    type: provision
+    timestamp: "2026-02-12T09:55:26Z"
     state: Succeeded
     message: "Provision completed successfully"
-  deprovisionJob:
-    id: "4925"
+  - jobID: "9079"
+    type: deprovision
+    timestamp: "2026-02-12T10:12:15Z"
     state: Running
     message: "Deprovisioning in progress"
 ```
@@ -1465,11 +1480,13 @@ AAP API provides progress information that could be surfaced in CR status:
 
 ```yaml
 status:
-  provisionJob:
-    id: "4870"
+  jobs:
+  - jobID: "9076"
+    type: provision
+    timestamp: "2026-02-12T09:55:26Z"
     state: Running
-    progress: 65  # Percentage complete (0-100)
-    currentStage: "Configuring network interfaces"
+    progress: 65  # Percentage complete (0-100) - Future enhancement
+    currentStage: "Configuring network interfaces"  # Future enhancement
 ```
 
 **Implementation:**

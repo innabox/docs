@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to generate PNG images from PlantUML diagrams
-# Requires: Docker
+# Requires: Docker or Podman
 
 set -e
 
@@ -12,8 +12,20 @@ echo "Generating images from PlantUML diagrams..."
 echo "Source: $DIAGRAMS_DIR"
 echo "Target: $IMAGES_DIR"
 
-# Run PlantUML via Docker to convert all .puml files to PNG
-docker run --rm \
+# Detect container runtime (prefer docker, fallback to podman)
+if command -v docker &> /dev/null; then
+  CONTAINER_CMD="docker"
+elif command -v podman &> /dev/null; then
+  CONTAINER_CMD="podman"
+else
+  echo "Error: Neither docker nor podman found. Please install one of them."
+  exit 1
+fi
+
+echo "Using container runtime: $CONTAINER_CMD"
+
+# Run PlantUML via container to convert all .puml files to PNG
+$CONTAINER_CMD run --rm \
   -v "$DIAGRAMS_DIR:/data:Z" \
   docker.io/plantuml/plantuml:latest \
   -tpng \
