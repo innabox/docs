@@ -1,0 +1,95 @@
+@startuml AAP Direct Model - Component Diagram
+
+!pragma layout smetana
+skinparam scale 2
+skinparam backgroundColor white
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+' Color scheme with better contrast
+skinparam rectangle {
+    BackgroundColor #E1F5FE
+    BorderColor #01579B
+    FontColor #01579B
+}
+
+skinparam component {
+    BackgroundColor #FFFFFF
+    BorderColor #0277BD
+    FontColor #01579B
+}
+
+skinparam database {
+    BackgroundColor #FFF9C4
+    BorderColor #F57F17
+    FontColor #F57F17
+}
+
+skinparam note {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+}
+
+rectangle "User Interface" #B3E5FC {
+    component [fulfillment-cli] as CLI #81D4FA
+}
+
+rectangle "Control Plane" #C5E1A5 {
+    component [fulfillment-service] as Service #AED581
+    component [cloudkit-operator] as Operator #9CCC65
+}
+
+rectangle "Kubernetes" #E1BEE7 {
+    component [Kubernetes API] as K8sAPI #CE93D8
+    database "etcd" as ETCD #FFF9C4 {
+        component [ComputeInstance CR] as CR #FFECB3
+    }
+}
+
+rectangle "Execution Platform" #FFCC80 {
+    component [AAP Controller] as AAP #FFB74D
+    component [Provision Playbook] as ProvPlay #FFA726
+    component [Deprovision Playbook] as DeprovPlay #FF9800
+}
+
+rectangle "Infrastructure" #D7CCC8 {
+    component [OpenShift Virtualization] as OCP #BCAAA4
+    component [VirtualMachine] as VM #A1887F
+}
+
+CLI -down-> Service : create/delete
+Service -down-> K8sAPI : create/update CR
+K8sAPI <-right-> Operator : watch CRs
+K8sAPI -down-> CR : store
+Operator -down-> AAP : trigger provision/\ncancel/deprovision
+AAP -down-> ProvPlay : launch
+AAP -down-> DeprovPlay : launch
+ProvPlay -right-> OCP : create VM
+DeprovPlay -right-> OCP : delete VM
+OCP -down-> VM : manage
+
+note right of Operator #FFF3E0
+  <b>Two Provider Models:</b>
+
+  <b>EDA (Event-Driven):</b>
+  • Webhook trigger to AAP
+  • AAP manages lifecycle
+  • AAP sets finalizer
+
+  <b>AAP Direct:</b>
+  • REST API to AAP
+  • Operator manages lifecycle
+  • No AAP finalizer
+end note
+
+note right of AAP #E8F5E9
+  <b>Job States:</b>
+  • Pending
+  • Running
+  • Succeeded
+  • Failed
+  • Canceled
+end note
+
+@enduml
