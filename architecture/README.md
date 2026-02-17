@@ -136,6 +136,12 @@ same resulting state. That is a standard best practice for any Ansible
 automation content, and in this project it enables the controllers to safely run
 their automated workflows with Ansible as needed.
 
+The O-SAC Controller supports multiple provisioning backends through a provider
+abstraction layer. This enables flexible integration with AAP through either
+Event-Driven Ansible (EDA) webhooks or direct AAP REST API calls. See [AAP
+Provisioning Architecture](aap-provisioning/) for details on the provider
+abstraction, job lifecycle management, and configuration options.
+
 ### Workflow
 
 The general workflow for fulfillment is as follows:
